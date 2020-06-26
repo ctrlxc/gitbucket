@@ -51,7 +51,8 @@ trait ActivityService {
       .list
 
   def recordCreateRepositoryActivity(userName: String, repositoryName: String, activityUserName: String)(
-    implicit s: Session
+    implicit
+    s: Session
   ): Unit =
     Activities insert Activity(
       userName,
@@ -59,6 +60,38 @@ trait ActivityService {
       activityUserName,
       "create_repository",
       s"[user:${activityUserName}] created [repo:${userName}/${repositoryName}]",
+      None,
+      currentDate
+    )
+
+  def recordTransferRepositoryActivity(
+    userName: String,
+    repositoryName: String,
+    oldUserName: String,
+    activityUserName: String
+  )(implicit s: Session): Unit =
+    Activities insert Activity(
+      userName,
+      repositoryName,
+      activityUserName,
+      "transfer_repository",
+      s"[user:${activityUserName}] transfered [repo:${oldUserName}/${repositoryName}] to [repo:${userName}/${repositoryName}]",
+      None,
+      currentDate
+    )
+
+  def recordRenameRepositoryActivity(
+    userName: String,
+    repositoryName: String,
+    oldRepositoryName: String,
+    activityUserName: String
+  )(implicit s: Session): Unit =
+    Activities insert Activity(
+      userName,
+      repositoryName,
+      activityUserName,
+      "rename_repository",
+      s"[user:${activityUserName}] renamed [repo:${userName}/${oldRepositoryName}] at [repo:${userName}/${repositoryName}]",
       None,
       currentDate
     )
