@@ -195,7 +195,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
 
   import scala.util.matching.Regex._
   implicit class RegexReplaceString(private val s: String) extends AnyVal {
-    def replaceAll(pattern: String, replacer: (Match) => String): String = {
+    def replaceAll(pattern: String)(replacer: Match => String): String = {
       pattern.r.replaceAllIn(s, (m: Match) => replacer(m).replace("$", "\\$"))
     }
   }
@@ -203,50 +203,64 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
   /**
    * Convert link notations in the activity message.
    */
+  // format: off
   def activityMessage(message: String)(implicit context: Context): Html =
     Html(
       message
-        .replaceAll(
-          "\\[issue:([^\\s]+?)/([^\\s]+?)#((\\d+))\\]",
-          s"""<a href="${context.path}/$$1/$$2/issues/$$3">$$1/$$2#$$3</a>"""
-        )
-        .replaceAll(
-          "\\[pullreq:([^\\s]+?)/([^\\s]+?)#((\\d+))\\]",
-          s"""<a href="${context.path}/$$1/$$2/pull/$$3">$$1/$$2#$$3</a>"""
-        )
-        .replaceAll("\\[repo:([^\\s]+?)/([^\\s]+?)\\]", s"""<a href="${context.path}/$$1/$$2\">$$1/$$2</a>""")
-        .replaceAll(
-          "\\[branch:([^\\s]+?)/([^\\s]+?)#([^\\s]+?)\\]",
-          (m: Match) =>
-            s"""<a href="${context.path}/${m.group(1)}/${m.group(2)}/tree/${encodeRefName(m.group(3))}">${StringUtil
-              .escapeHtml(
-                m.group(3)
-              )}</a>"""
-        )
-        .replaceAll(
-          "\\[tag:([^\\s]+?)/([^\\s]+?)#([^\\s]+?)\\]",
-          (m: Match) =>
-            s"""<a href="${context.path}/${m.group(1)}/${m.group(2)}/tree/${encodeRefName(m.group(3))}">${StringUtil
-              .escapeHtml(
-                m.group(3)
-              )}</a>"""
-        )
-        .replaceAll("\\[user:([^\\s]+?)\\]", (m: Match) => user(m.group(1)).body)
-        .replaceAll(
-          "\\[commit:([^\\s]+?)/([^\\s]+?)\\@([^\\s]+?)\\]",
-          (m: Match) =>
-            s"""<a href="${context.path}/${m.group(1)}/${m.group(2)}/commit/${m.group(3)}">${m.group(1)}/${m
-              .group(2)}@${m.group(3).substring(0, 7)}</a>"""
-        )
-        .replaceAll(
-          "\\[release:([^\\s]+?)/([^\\s]+?)/([^\\s]+?):(.+)\\]",
-          (m: Match) =>
-            s"""<a href="${context.path}/${m.group(1)}/${m.group(2)}/releases/${encodeRefName(m.group(3))}">${StringUtil
-              .escapeHtml(
-                m.group(4)
-              )}</a>"""
-        )
+        .replaceAll("\\[issue:([^\\s]+?)/([^\\s]+?)#((\\d+))\\]"){ m =>
+          if (getRepositoryInfoFromCache(m.group(1), m.group(2)).isDefined) {
+            s"""<a href="${context.path}/${m.group(1)}/${m.group(2)}/issues/${m.group(3)}">${m.group(1)}/${m.group(2)}#${m.group(3)}</a>"""
+          } else {
+            s"${m.group(1)}/${m.group(2)}#${m.group(3)}"
+          }
+        }
+        .replaceAll("\\[pullreq:([^\\s]+?)/([^\\s]+?)#((\\d+))\\]"){ m =>
+          if (getRepositoryInfoFromCache(m.group(1), m.group(2)).isDefined) {
+            s"""<a href="${context.path}/${m.group(1)}/${m.group(2)}/pull/${m.group(3)}">${m.group(1)}/${m.group(2)}#${m.group(3)}</a>"""
+          } else {
+            s"${m.group(1)}/${m.group(2)}#${m.group(3)}"
+          }
+        }
+        .replaceAll("\\[repo:([^\\s]+?)/([^\\s]+?)\\]") { m =>
+          if (getRepositoryInfoFromCache(m.group(1), m.group(2)).isDefined) {
+            s"""<a href="${context.path}/${m.group(1)}/${m.group(2)}">${m.group(1)}/${m.group(2)}</a>"""
+          } else {
+            s"${m.group(1)}/${m.group(2)}"
+          }
+        }
+        .replaceAll("\\[branch:([^\\s]+?)/([^\\s]+?)#([^\\s]+?)\\]") { m =>
+          if (getRepositoryInfoFromCache(m.group(1), m.group(2)).isDefined) {
+            s"""<a href="${context.path}/${m.group(1)}/${m.group(2)}/tree/${encodeRefName(m.group(3))}">${StringUtil.escapeHtml(m.group(3))}</a>"""
+          } else {
+            StringUtil.escapeHtml(m.group(3))
+          }
+        }
+        .replaceAll("\\[tag:([^\\s]+?)/([^\\s]+?)#([^\\s]+?)\\]") { m =>
+          if (getRepositoryInfoFromCache(m.group(1), m.group(2)).isDefined) {
+            s"""<a href="${context.path}/${m.group(1)}/${m.group(2)}/tree/${encodeRefName(m.group(3))}">${StringUtil.escapeHtml(m.group(3))}</a>"""
+          } else {
+            StringUtil.escapeHtml(m.group(3))
+          }
+        }
+        .replaceAll("\\[user:([^\\s]+?)\\]") { m =>
+          user(m.group(1)).body
+        }
+        .replaceAll("\\[commit:([^\\s]+?)/([^\\s]+?)\\@([^\\s]+?)\\]") { m =>
+          if (getRepositoryInfoFromCache(m.group(1), m.group(2)).isDefined) {
+            s"""<a href="${context.path}/${m.group(1)}/${m.group(2)}/commit/${m.group(3)}">${m.group(1)}/${m.group(2)}@${m.group(3).substring(0, 7)}</a>"""
+          } else {
+            s"${m.group(1)}/${m.group(2)}@${m.group(3).substring(0, 7)}"
+          }
+        }
+        .replaceAll("\\[release:([^\\s]+?)/([^\\s]+?)/([^\\s]+?):(.+)\\]") { m =>
+          if (getRepositoryInfoFromCache(m.group(1), m.group(2)).isDefined) {
+            s"""<a href="${context.path}/${m.group(1)}/${m.group(2)}/releases/${encodeRefName(m.group(3))}">${StringUtil.escapeHtml(m.group(4))}</a>"""
+          } else {
+            StringUtil.escapeHtml(m.group(4))
+          }
+        }
     )
+  // format: off
 
   /**
    * Remove html tags from the given Html instance.
