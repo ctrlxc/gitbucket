@@ -3,7 +3,6 @@ package gitbucket.core.view
 import java.text.SimpleDateFormat
 import java.util.{Date, Locale, TimeZone}
 
-import com.nimbusds.jose.util.JSONObjectUtils
 import gitbucket.core.controller.Context
 import gitbucket.core.model.CommitState
 import gitbucket.core.model.PullRequest
@@ -333,9 +332,9 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
     content: Html
   )(implicit context: Context): Html =
     (if (mailAddress.isEmpty) {
-       getAccountByUserName(userName)
+       getAccountByUserNameFromCache(userName)
      } else {
-       getAccountByMailAddress(mailAddress)
+       getAccountByMailAddressFromCache(mailAddress)
      }).map { account =>
       Html(s"""<a href="${url(account.userName)}" class="${styleClass}">${content}</a>""")
     } getOrElse content

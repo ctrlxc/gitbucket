@@ -34,6 +34,7 @@ class AccountController
     with WebHookService
     with PrioritiesService
     with RepositoryCreationService
+    with RequestCache
 
 trait AccountControllerBase extends AccountManagementControllerBase {
   self: AccountService

@@ -33,6 +33,7 @@ class RepositorySettingsController
     with ActivityService
     with OwnerAuthenticator
     with UsersAuthenticator
+    with RequestCache
 
 trait RepositorySettingsControllerBase extends ControllerBase {
   self: RepositoryService
